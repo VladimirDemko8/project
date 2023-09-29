@@ -7,9 +7,10 @@ from tabulate import tabulate
 from keyboardsDelivery import send_main_menu_inline, send_admin_keyboard, send_manager_keyboard,inline_keyboard_admin_bd, admin_menu_keyboard
 
 
-
+global con
 
 con = sl.connect('delivery_db.db')
+
 bot = telebot.TeleBot('6312431700:AAEea6F81xq0uO28q-dKs6Q8WCfZBvYMioY')
 
 
@@ -76,7 +77,6 @@ def admin_command(message):
 
 
 def check_admin_credentials(login, password):
-    con = sl.connect('delivery_db.db')
     with con:
         result_admin = con.execute("SELECT * FROM admins WHERE login = ? AND password = ?", (login, password)).fetchone()
         result_manager = con.execute("SELECT * FROM managers WHERE login = ? AND password = ?", (login, password)).fetchone()
@@ -148,8 +148,6 @@ def handle_phone_number(message):
         bot.send_message(message.chat.id, "Пожалуйста, введите ваш адрес:")
     else:
         bot.send_message(message.chat.id, "Ошибка! Пользователь не найден в базе данных.")
-
-
 
 def process_address(message):
     address = message.text
@@ -226,7 +224,6 @@ def show_cart(message, edit=False):
         total_cost += item[2] * item[3]
 
         keyboard = types.InlineKeyboardMarkup()
-        # bot.send_message(message.chat.id, text="Корзина:")
         keyboard.row(
             types.InlineKeyboardButton("Добавить еще", callback_data=f"add_more_cart_{item[0]}"),
             types.InlineKeyboardButton("Убрать", callback_data=f"remove_one_cart_{item[0]}"),
@@ -278,7 +275,7 @@ def add_product_to_cart(message, product_id):
     con = sl.connect('delivery_db.db')
 
     with con:
-        product_name = con.execute("SELECT name FROM products WHERE product_id = ?", (product_id,)).fetchone()[
+        product_name = con.execute("SELECT name FROM products WHERE user_id = ?", (product_id,)).fetchone()[
             0]  # Получаем название продукта
 
         existing_product = con.execute("SELECT amount FROM cart WHERE user_id = ? AND product_id = ?",
