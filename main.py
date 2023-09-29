@@ -4,6 +4,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import sqlite3 as sl
 import json
 from tabulate import tabulate
+from keyboardsDelivery import send_main_menu_inline, send_admin_keyboard, send_manager_keyboard,inline_keyboard_admin_bd, admin_menu_keyboard
+
 
 
 
@@ -34,9 +36,12 @@ update_id = 1
 update_value = ''
 
 
+
+
 @bot.message_handler(commands=['start'])
 def start_handler(message):
-    send_main_menu_inline(message)
+    bot.send_message(message.chat.id, text='Выберите действие:', reply_markup=send_main_menu_inline())
+
 
 
 def request_admin_credentials(message):
@@ -55,9 +60,11 @@ def process_admin_password(message, login):
     user = check_admin_credentials(login, password)
     if user:
         if user[2] == 'admin':
-            send_admin_keyboard(message)
+            keyboard = send_admin_keyboard()
+            bot.send_message(message.chat.id, "Выберите действие:", reply_markup=keyboard)
         elif user[2] == 'manager':
-            send_manager_keyboard(message)
+            keyboard = send_manager_keyboard()
+            bot.send_message(message.chat.id, "Выберите действие:", reply_markup=keyboard)
     else:
         bot.send_message(message.chat.id, "Неверные учетные данные. Пожалуйста, попробуйте еще раз.")
 
@@ -66,25 +73,6 @@ def process_admin_password(message, login):
 @bot.message_handler(commands=['admin'])
 def admin_command(message):
     request_admin_credentials(message)
-
-
-def send_admin_keyboard(message):
-    keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton('Управление данными админов', callback_data='admins_data'))
-    keyboard.add(types.InlineKeyboardButton('Управление данными блюд', callback_data='s'+'products'))
-    keyboard.add(types.InlineKeyboardButton('Управление данными заказов', callback_data='orders_data'))
-    keyboard.add(types.InlineKeyboardButton('Управление данными пользователей', callback_data='s'+'users'))
-    keyboard.add(types.InlineKeyboardButton('Управление данными комментариев', callback_data='comments_data'))
-    bot.send_message(message.chat.id, text='Выберите действие:', reply_markup=keyboard)
-
-
-def send_manager_keyboard(message):
-    keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton('Управление данными блюд', callback_data='s'+'products'))
-    keyboard.add(types.InlineKeyboardButton('Управление данными заказов', callback_data='orders_data'))
-    keyboard.add(types.InlineKeyboardButton('Управление данными пользователей', callback_data='s'+'users'))
-    keyboard.add(types.InlineKeyboardButton('Управление данными комментариев', callback_data='comments_data'))
-    bot.send_message(message.chat.id, text='Выберите действие:', reply_markup=keyboard)
 
 
 def check_admin_credentials(login, password):
@@ -100,14 +88,6 @@ def check_admin_credentials(login, password):
         return result_manager[0], result_manager[1], 'manager'
 
     return None
-
-
-def send_main_menu_inline(message):
-    keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton('Начать', callback_data='begin'))
-    keyboard.add(types.InlineKeyboardButton('Отзывы', callback_data='reviews'))
-    keyboard.add(types.InlineKeyboardButton('О боте', callback_data='about_bot'))
-    bot.send_message(message.chat.id, text='Выберите действие:', reply_markup=keyboard)
 
 
 def user_exists(user_id):
@@ -621,30 +601,16 @@ def callback_inline(call):
         b = []
         if data == 'users':
             b = ['user_id', 'name', 'phone','address']
-        # if data == 'products':
-        #     b = ['user_id', 'name', 'description', 'price', 'amount', 'rating']
         con = sl.connect('delivery_db.db')
         with con:
             data1 = con.execute(f"SELECT * FROM {data}")
-            # print(data)
             a = data1.fetchall()
-            # print(a)
-        markup_menu = InlineKeyboardMarkup()
-        btn1 = InlineKeyboardButton('Удалить данные', callback_data=f'a{data}')
-        btn2 = InlineKeyboardButton('Изменить данные', callback_data=f'u{data}')
-        btn3 = InlineKeyboardButton('Внести данные', callback_data=f'i{data}')
-        btn4 = InlineKeyboardButton('Вернуться в меню админа', callback_data='b')
-        markup_menu.add(btn1, btn2, btn3, btn4)
+        markup_menu = inline_keyboard_admin_bd(data) # изменил название функции создания клавиатуры
         bot.send_message(user_id, f'Таблица {data}')
-        # bot.send_message(user_id, 'Выберите действие', reply_markup=markup_menu)
-        # bot.send_message(user_id, tabulate(a, headers=b), reply_markup=markup_menu)
         bot.send_message(user_id, f'<pre>{tabulate(a, headers=b)}</pre>', parse_mode='HTML', reply_markup=markup_menu)
     # При возврате в "В меню админа" - выпадает список всех доступных таблиц
     elif flag == "b":
-        keyboard = types.InlineKeyboardMarkup()
-        keyboard.add(types.InlineKeyboardButton('users', callback_data='s'+'users'))
-        keyboard.add(types.InlineKeyboardButton('products', callback_data='s'+'products'))
-        # keyboard.add(types.InlineKeyboardButton('cart', callback_data='s'+'cart'))
+        keyboard = send_admin_keyboard()
         bot.send_message(call.message.chat.id, text='Выберите таблицу для редактирования:', reply_markup=keyboard)
 
     # Нажимаем кнопку "Удалить" после указания id (в любой таблице)
@@ -652,7 +618,6 @@ def callback_inline(call):
         keyboard2 = types.InlineKeyboardMarkup()
         keyboard2.add(types.InlineKeyboardButton(data, callback_data=f's{data}'))
         keyboard2.add(types.InlineKeyboardButton('Вернуться в меню админа', callback_data='b'))
-        # print(data)
         con = sl.connect('delivery_db.db')
         with con:
             # Удаляем запись из выбранной таблицы
