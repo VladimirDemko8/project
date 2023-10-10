@@ -413,7 +413,7 @@ def show_cart(message, edit=False):
         keyboard.row(types.InlineKeyboardButton("Удалить все", callback_data=f"remove_all_cart_{item[0]}"))
 
         if edit:
-            bot.edit_message_text(message.chat.id, message_id=message.message_id, text=dish_text, reply_markup=keyboard)
+            bot.edit_message_text(chat_id=message.chat.id, message_id=message.message_id, text=dish_text, reply_markup=keyboard)
         else:
             bot.send_message(message.chat.id, text=dish_text, reply_markup=keyboard)
 
@@ -481,7 +481,7 @@ def add_product_to_cart(message, product):
 
         else:
             con.execute("INSERT INTO cart_items(cart_id, product_id, amount) VALUES (?, ?, 1)", (cart_id, product))
-            bot.send_message(user_id, f"Вы добавили {product_name} в корзину.")
+            bot.send_message(user_id, f"Вы добавили {product_name} в корзину.",)
 
         con.commit()
 
@@ -503,7 +503,7 @@ def remove_product_from_cart(message, product_id):
         if existing_product and existing_product[0] > 1:
             con.execute("UPDATE cart_items SET amount = amount - 1 WHERE cart_id = ? AND product_id = ?",
                         (cart_id, product_id))
-            bot.send_message(user_id, f"Вы убрали один {product_name} из корзины.")
+            bot.send_message(user_id, f"Вы убрали один {product_name} из корзины.",reply_markup= keyboardsDelivery.keyboard_cart())
         elif existing_product and existing_product[0] == 1:
             con.execute("DELETE FROM cart_items WHERE cart_id = ? AND product_id = ?", (cart_id, product_id))
             bot.send_message(user_id, f"Вы удалили все {product_name} из корзины.")
@@ -547,8 +547,12 @@ def callback_inline(call):
         if not user_exists(telegram_id):
             start_new_user(call.message)
         else:
-            bot.send_message(chat_id=telegram_id, text=f"Добро пожаловать, {username}!")
+            menu_button = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn1 = types.KeyboardButton("Главное меню")
+            menu_button.add(btn1)
+            bot.send_message(chat_id=telegram_id, text=f"Добро пожаловать, {username}!",reply_markup=menu_button)
             send_categories_keyboard(call.message)
+
     elif call.data == 'about_bot':
         bot.send_message(call.message.chat.id, text=bot_description)
     elif call.data.startswith("category_"):
@@ -769,6 +773,12 @@ def callback_inline(call):
             con.execute(f"""UPDATE {data} SET {field}='{update_value}' WHERE id={update_id}""")
         bot.send_message(call.message.chat.id, 'Данные изменены!')
         bot.send_message(call.message.chat.id, 'Куда идём дальше?', reply_markup=after_confirm_update(data))
+
+
+@bot.message_handler(func=lambda message: True)  # обработчик всех текстовых сообщений
+def handle_text(message):
+    if message.text == 'Главное меню':
+        bot.send_message(message.chat.id, 'Выберите действие:', reply_markup=send_main_menu_inline())
 
 
 def handle_self_pickup(call):
