@@ -27,6 +27,10 @@ header_users = ['name', 'phone', 'address', 'telegram_id']
 header_products = ['name', 'description', 'price', 'amount', 'category','photo']
 header_reviews = ['user_id', 'product_id', 'comment', 'user_rating']
 header_categories = ['category_name']
+header_admins = ['login', 'password']
+header_orders = ['user_id', 'cart_id', 'address', 'delivery_time', 'payment']
+header_cart_items = ['cart_id', 'product_id', 'amount']
+header_cart = ['user_id']
 header_list = []
 
 @bot.message_handler(commands=['start'])
@@ -199,6 +203,21 @@ questions_dict = {
         "comment": "Введите отзыв:",
         "user_rating": "Введите рейтинг:",
     },
+    "orders": {
+        "user_id": "Введите user_id:",
+        "cart_id": "Введите cart_id:",
+        "address": "Введите адрес:",
+        "delivery_time": "Введите время доставки:",
+        "payment": "Введите способ оплаты:",
+    },
+    "cart_items": {
+        "cart_id": "Введите cart_id:",
+        "product_id": "Введите product_id:",
+        "amount": "Введите amount",
+    },
+    "cart": {
+        "user_id": "Введите user_id:",
+    },
 }
 
 
@@ -244,6 +263,16 @@ def update_buttons(message, data):
     global header_list
     update_id = message.text
     update_id_list = []
+    if data == 'cart':
+        header_list = header_cart
+    if data == 'cart_items':
+        header_list = header_cart_items
+    if data == 'orders':
+        header_list = header_orders
+    if data == 'categories':
+        header_list = header_categories
+    if data == 'admins' or data == 'managers':
+        header_list = header_admins
     if data == 'users':
         header_list = header_users
     if data == 'products':
@@ -332,7 +361,23 @@ def input_review(message, data, buffer_review):
 # Функция принимает id комментария и предлагает публиковать/не публиковать отзывы - для админа
 def yes_or_no(message):
     id_review = message.text
-    bot.send_message(message.chat.id, "Опубликовать комментарий?", reply_markup=choose_yes_or_no(id_review))
+    try:
+        id_review = int(id_review)
+        id_list = []
+        with con:
+            existing_id = con.execute("""SELECT id FROM buffer_reviews""")
+            existing_id = existing_id.fetchall()
+            print(existing_id)
+        for i in existing_id:
+            id_list.append(i[0])
+        if id_review in id_list:
+            bot.send_message(message.chat.id, f"Опубликовать комментарий c id {id_review}?", reply_markup=choose_yes_or_no(id_review))
+        else:
+            bot.send_message(message.chat.id, "id указан неверно, выберите id из таблицы")
+            bot.register_next_step_handler(message, yes_or_no)
+    except:
+        bot.send_message(message.chat.id, "id указан неверно, выберите id из таблицы")
+        bot.register_next_step_handler(message, yes_or_no)
 
 
 ###########################Кактегории блюд#########################################
@@ -543,10 +588,14 @@ def callback_inline(call):
     flag = call.data[0]
     if call.data == "begin":
         telegram_id = call.message.chat.id
-        username = call.message.chat.username
+        username = call.message.chat.first_name
         if not user_exists(telegram_id):
             start_new_user(call.message)
         else:
+            with con:
+                con.execute("DELETE FROM cart_items WHERE cart_id = ?", (telegram_id,))  # очистка корзины через cart_id
+                con.commit()
+
             menu_button = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("Главное меню")
             menu_button.add(btn1)
@@ -587,7 +636,7 @@ def callback_inline(call):
     elif call.data == 'self_pickup':
         handle_self_pickup(call)
     elif call.data == 'courier':
-        handle_courier(call)
+        handle_courier(call)##########
     elif call.data.startswith('pay_'):
         handle_payment_method(call)
     elif call.data == 'delivery_options':
@@ -625,6 +674,14 @@ def callback_inline(call):
         # При выборе конкретной таблицы из меню админа
     if flag == "й":
         b = []
+        if data == 'cart':
+            b = ['id', 'user_id']
+        if data == 'cart_items':
+            b = ['cart_id', 'product_id', 'amount']
+        if data == 'orders':
+            b = ['id', 'user_id', 'cart_id', 'address', 'delivery_time', 'payment']
+        if data == 'admins' or data == 'managers':
+            b = ['id', 'login', 'password']
         if data == 'users':
             b = ['id', 'name', 'phone', 'address', 'telegram_id']
         if data == 'products':
@@ -646,10 +703,15 @@ def callback_inline(call):
         with con:
             data1 = con.execute(f"SELECT * FROM buffer_reviews")
             a = data1.fetchall()
-        bot.send_message(user_id, f'Таблица <b>buffer_reviews</b>', parse_mode='HTML')
-        bot.send_message(user_id, f'<pre>{tabulate(a, headers=b)}</pre>', parse_mode='HTML')
-        bot.send_message(user_id, 'Введите id комментария для дальнейшей работы с ним')
-        bot.register_next_step_handler(call.message, yes_or_no)
+            if len(a) != 0:
+                bot.send_message(user_id, f'Таблица <b>buffer_reviews</b>', parse_mode='HTML')
+                bot.send_message(user_id, f'<pre>{tabulate(a, headers=b)}</pre>', parse_mode='HTML')
+                bot.send_message(user_id, 'Введите id комментария для дальнейшей работы с ним')
+                bot.register_next_step_handler(call.message, yes_or_no)
+            else:
+                bot.send_message(user_id, 'В буферной таблице пока нет комментариев')
+                bot.send_message(call.message.chat.id, text='Выберите таблицу для редактирования:',
+                                 reply_markup=admin_menu_buttons())
 
         # Появляется после нажатия кнопки "Удалить комментарий" из buffer_reviews
     if flag == "y":
@@ -719,8 +781,9 @@ def callback_inline(call):
             bot.send_message(user_id, f'Средний рейтинг <b>{data}</b> равен <b>{average_rating}</b>',
                              parse_mode='HTML', reply_markup=send_main_menu_inline())
         except:
-            bot.send_message(user_id, text="К данному блюду отсутствуют отзывы.")
-        # Нажали кнопку "Удалить данные" в любой таблице
+            bot.send_message(user_id, text="К данному блюду отсутствуют отзывы.", reply_markup=send_main_menu_inline())
+
+    # Нажали кнопку "Удалить данные" в любой таблице
     if flag == "э":
         bot.send_message(user_id, "Введите id:")
         bot.register_next_step_handler(call.message, delete, data)
@@ -843,4 +906,5 @@ def handle_payment_method(call):
     bot.send_message(call.message.chat.id, "Главное меню:", reply_markup=send_main_menu_inline())
 
 
+print('Ready')
 bot.infinity_polling(skip_pending=True)

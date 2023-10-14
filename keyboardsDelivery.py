@@ -39,9 +39,6 @@ def inline_keyboard_admin_bd(data, button_labels=('Удалить данные',
     markup_menu.add(btn1, btn2, btn3, btn4)
     return markup_menu
 
-from telebot import types
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-
 
 # Клавиатура при нажатии /start
 def main_menu_buttons():
@@ -55,16 +52,28 @@ def main_menu_buttons():
 # Кнопки меню админа
 def admin_menu_buttons():
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton('users', callback_data='й' + 'users'))
-    keyboard.add(types.InlineKeyboardButton('products', callback_data='й' + 'products'))
-    keyboard.add(types.InlineKeyboardButton('buffer_reviews', callback_data='n'))
-    keyboard.add(types.InlineKeyboardButton('reviews', callback_data='й' + 'reviews'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными админов', callback_data='й' + 'admins'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными менеджеров', callback_data='й' + 'managers'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными пользователей', callback_data='й' + 'users'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными блюд', callback_data='й' + 'products'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными категорий', callback_data='й' + 'categories'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными заказов', callback_data='й' + 'orders'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными cart', callback_data='й' + 'cart'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными cart_items', callback_data='й' + 'cart_items'))
+    keyboard.add(types.InlineKeyboardButton('Буферная таблица комментариев', callback_data='n'))
+    keyboard.add(types.InlineKeyboardButton('Одобренные комментарии', callback_data='й' + 'reviews'))
     return keyboard
 
 def manager_menu_buttons():
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton('buffer_reviews', callback_data='n'))
-    keyboard.add(types.InlineKeyboardButton('reviews', callback_data='й' + 'reviews'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными пользователей', callback_data='й' + 'users'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными блюд', callback_data='й' + 'products'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными категорий', callback_data='й' + 'categories'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными заказов', callback_data='й' + 'orders'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными cart', callback_data='й' + 'cart'))
+    keyboard.add(types.InlineKeyboardButton('Управление данными cart_items', callback_data='й' + 'cart_items'))
+    keyboard.add(types.InlineKeyboardButton('Буферная таблица комментариев', callback_data='n'))
+    keyboard.add(types.InlineKeyboardButton('Одобренные комментарии', callback_data='й' + 'reviews'))
     return keyboard
 
 # Клавиатура для принятия решения, публиковать или нет отзыв
@@ -85,6 +94,7 @@ def main_menu_reviews():
 def keyboard_cart():
     keyboard_cart = types.InlineKeyboardMarkup()
     keyboard_cart.add(types.InlineKeyboardButton('Перейти в корзину', callback_data='goto_cart'))
+
     return keyboard_cart
 # Появляется после отправки пользователем отзыва
 def keyboard_back_review():
